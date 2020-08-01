@@ -1,9 +1,12 @@
+import java.awt.BasicStroke;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.EventQueue;
 import java.awt.Graphics;
+import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.Point;
+import java.awt.Stroke;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
@@ -12,7 +15,12 @@ import java.awt.event.MouseListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Random;
 
 import javax.imageio.ImageIO;
 import javax.swing.Icon;
@@ -32,14 +40,13 @@ public class TraningSet extends JFrame {
 	/**
 	 * 
 	 */
-	public final static String c_SrcFolder = "./img/";
-	public static Graphics g;
+	public final String c_SrcFolder = "./img/";
 	private ArrayList<JButton> listIcon;
 	private JLabel lblBoard;
 	private JPanel contentPane;
 	private Point pointToDrawIcon;
     private String IconToDraw;
-	
+	private BufferedImage m_BoardImage;
 	
 	
     public Point getPointToDrawIcon() {
@@ -63,7 +70,7 @@ public class TraningSet extends JFrame {
 		setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		this.setBounds(100, 100, 1280, 720);
 		this.contentPane = new JPanel();
-		this.contentPane.setBackground(new Color(255, 255, 224));
+		this.contentPane.setBackground(new Color(224, 255, 255));
 		this.contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
 		this.setContentPane(contentPane);
 		this.contentPane.setLayout(null);
@@ -73,7 +80,8 @@ public class TraningSet extends JFrame {
 		ImageIcon icon_X = new ImageIcon(c_SrcFolder + "IconX.png");
 		ImageIcon icon_Cone = new ImageIcon(c_SrcFolder + "IconCone.png"); 
 		ImageIcon icon_Text = new ImageIcon(c_SrcFolder + "IconText.png"); 
-		
+		ImageIcon icon_Arrow = new ImageIcon(c_SrcFolder + "arrow.png");
+		ImageIcon icon_Arrow2 = new ImageIcon(c_SrcFolder + "arrow2.png");
 		
 		JPanel pnlBoard = new JPanel();
 		pnlBoard.setBackground(new Color(85, 107, 47));
@@ -103,14 +111,6 @@ public class TraningSet extends JFrame {
 		pnlBoard.add(btnIconCone);
 		btnIconCone.setIcon(icon_Cone);
 		
-		
-		
-		
-		JButton btnIconText = new JButton("IconText");
-		btnIconText.setBounds(35, 339, 90, 91);
-		pnlBoard.add(btnIconText);
-		btnIconText.setIcon(icon_Text);
-		
 		JLabel lblWellcome = new JLabel("Draw Traning");
 		lblWellcome.setForeground(new Color(0, 0, 128));
 		lblWellcome.setFont(new Font("Tahoma", Font.BOLD | Font.ITALIC, 19));
@@ -124,17 +124,39 @@ public class TraningSet extends JFrame {
 		btnIconX.addMouseListener(MouseClick);
 		btnIconO.addMouseListener(MouseClick);
 		btnIconCone.addMouseListener(MouseClick);
-		btnIconText.addMouseListener(MouseClick);
 		lblBoard.addMouseListener(MouseClick);
 		
 		listIcon = new ArrayList<JButton>();
 		listIcon.add(btnIconX);
 		listIcon.add(btnIconO);
 		listIcon.add(btnIconCone);
-		listIcon.add(btnIconText);
-		
-		
 
+		
+		JButton btnIconArrow = new JButton("Arrow");
+		btnIconArrow.setIcon(icon_Arrow);
+		btnIconArrow.setBounds(1105, 100, 85, 57);
+		pnlBoard.add(btnIconArrow);
+		
+		JButton btnArrow2 = new JButton("Arrow2");
+		btnArrow2.setIcon(icon_Arrow2);
+		btnArrow2.setBounds(1105, 225, 85, 57);
+		pnlBoard.add(btnArrow2);
+		
+		JButton btnSaveImg = new JButton("Save");
+		btnSaveImg.setBounds(1093, 369, 97, 57);
+		pnlBoard.add(btnSaveImg);
+		
+		JButton btnClear = new JButton("Clear Board");
+		btnClear.setBounds(1093, 470, 97, 72);
+		pnlBoard.add(btnClear);
+		btnIconArrow.addMouseListener(MouseClick);
+		btnArrow2.addMouseListener(MouseClick);
+		btnSaveImg.addMouseListener(MouseClick);
+		btnClear.addMouseListener(MouseClick);
+		
+		// Set image with lblBoard background
+		m_BoardImage = new BufferedImage(lblBoard.getWidth(), lblBoard.getHeight(), BufferedImage.TYPE_INT_ARGB);
+		lblBoard.printAll(m_BoardImage.getGraphics());
 	}
 	private BufferedImage getIconByName(String Icon) throws IOException
 	{
@@ -144,20 +166,65 @@ public class TraningSet extends JFrame {
 			return ImageIO.read(new File(c_SrcFolder + "IconO.png"));
 		if(Icon == "IconCone")
 			return ImageIO.read(new File(c_SrcFolder + "IconCone.png")); 
-		if(Icon == "IconText")
-			return ImageIO.read(new File(c_SrcFolder + "IconText.png"));
 		return null;
 	}
 
 	public void DrawIconToBoard(String imageName, Point imagePoint) throws IOException
 	{
 		var icon = getIconByName(imageName);
+		var boardGraphics = lblBoard.getGraphics();
+		boardGraphics.drawImage(icon, imagePoint.x, imagePoint.y, 30, 30, null);
+		
+		var imageGraphics = m_BoardImage.getGraphics();
+		imageGraphics.drawImage(icon, imagePoint.x, imagePoint.y, 30, 30, null);
+	}
+	
+	public void DrawArrowToBoard(Boolean isDashedArrow, Point firstPoint, Point secondPoint) throws IOException
+	{
+		
 		var g = lblBoard.getGraphics();
-        g.drawImage(icon, imagePoint.x, imagePoint.y, 30, 30, null);
+		Graphics2D g2d = (Graphics2D) g;
+		float[] dashSpaces = null;
+		
+		// Set Stroke as dashed
+		if(isDashedArrow)
+		 dashSpaces = new float[]{9};
+		
+		Stroke dashed = new BasicStroke(3, BasicStroke.CAP_BUTT, BasicStroke.JOIN_BEVEL, 0, dashSpaces , 0);
+        g2d.setStroke(dashed);
+		
+        g2d.drawLine(firstPoint.x, firstPoint.y, secondPoint.x, secondPoint.y);
+        
+        var imageGraphics = (Graphics2D) m_BoardImage.getGraphics();
+		imageGraphics.drawLine(firstPoint.x, firstPoint.y, secondPoint.x, secondPoint.y);
 
 	}
 	
+	public void SaveBoardToImg()
+	{	 
+		 // create instance of Random class 
+	     Random rand = new Random(); 
+	  
+	     // Generate random integers in range 0 to 999 
+	     int rndNum = rand.nextInt(1000); 
+	        
+		 File outputfile = new File("board"+ rndNum +".png");
+		 try {
+			ImageIO.write(m_BoardImage, "png", outputfile);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		 
+		 ClearBoard();
+	}
 	
-	
+	public void ClearBoard()
+	{
+        lblBoard.repaint();
+        lblBoard.printAll(m_BoardImage.getGraphics());
+ 
+
+	}
 
 }

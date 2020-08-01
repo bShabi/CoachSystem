@@ -5,6 +5,7 @@ import javax.swing.JLabel;
 import javax.swing.JOptionPane;
 import javax.swing.SwingConstants;
 import javax.swing.JTextField;
+import javax.swing.ListSelectionModel;
 import javax.swing.SpinnerModel;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.JButton;
@@ -18,14 +19,18 @@ import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import java.awt.Color;
 import java.awt.Font;
+import java.awt.Point;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import java.sql.Date;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.Vector;
 
 import javax.swing.JScrollPane;
@@ -46,12 +51,12 @@ public class Games extends JFrame {
 	private JScrollPane scrollPane;
 	private JTable tableMyGame;
 	private JButton btnExit;
-	private JButton btnTeamSquad;
-	private JButton btnTraningSet;
 	private JSpinner spRangePlayers;
 	private JSpinner spFixure;
 	private DB DataBase;
 	private AddPlayerIToGame addPlayerToGameFrm;
+	private int fixure;
+	private JButton btnRemoveGame;
 	
 
 	
@@ -62,6 +67,7 @@ public class Games extends JFrame {
 		spRangePlayers.addChangeListener(new SpinnerListener());
 		Handler handler = new Handler();
 		btnSubbmit.addActionListener(handler);
+		btnRemoveGame.addActionListener(handler);
 		btnExit.addActionListener(handler);
 		
 		
@@ -72,14 +78,14 @@ public class Games extends JFrame {
 		setResizable(false);
 		setBounds(100, 100, 800, 600);
 		JFrameTeamGame = new JPanel();
-		JFrameTeamGame.setBackground(new Color(255, 255, 224));
+		JFrameTeamGame.setBackground(new Color(100, 149, 237));
 		JFrameTeamGame.setBorder(new EmptyBorder(5, 5, 5, 5));
 		setContentPane(JFrameTeamGame);
 		JFrameTeamGame.setLayout(null);
 		
 		///////Panel Add Game//////
 		panelAddGame = new JPanel();
-		panelAddGame.setBackground(new Color(255, 255, 255));
+		panelAddGame.setBackground(new Color(224, 255, 255));
 		panelAddGame.setBounds(10, 83, 258, 369);
 		JFrameTeamGame.add(panelAddGame);
 		panelAddGame.setLayout(null);
@@ -148,7 +154,7 @@ public class Games extends JFrame {
 		panelAddGame.add(lblFixure);
 		
 		spFixure = new JSpinner();
-		spFixure.setModel(new SpinnerNumberModel(DataBase.getGames().size()+1,null,null,1));
+		spFixure.setModel(new SpinnerNumberModel(DataBase.getNextGameNum(),null,null,1));
 		spFixure.setEnabled(false);
 		spFixure.setBounds(153, 59, 30, 20);
 		panelAddGame.add(spFixure);
@@ -157,7 +163,7 @@ public class Games extends JFrame {
 		
 		///Start of Panel my Game ///
 		panelMyGame = new JPanel();
-		panelMyGame.setBackground(new Color(255, 255, 255));
+		panelMyGame.setBackground(new Color(224, 255, 255));
 		panelMyGame.setBounds(278, 83, 500, 369);
 		JFrameTeamGame.add(panelMyGame);
 		panelMyGame.setLayout(null);
@@ -176,24 +182,36 @@ public class Games extends JFrame {
 		//Table of my GamesJTable table = new JTable(buildTableModel(rs));
 		try {
 			tableMyGame = new JTable(DataBase.buildTableModel(DataBase.getGame()));
-			tableMyGame.setEnabled(false);
+			tableMyGame.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
+			tableMyGame.addMouseListener(new MouseAdapter() {
+			    public void mousePressed(MouseEvent mouseEvent) {
+			        JTable table =(JTable) mouseEvent.getSource();
+			        Point point = mouseEvent.getPoint();
+			        int row = table.rowAtPoint(point);
+			        //Check If double click 
+			        if (mouseEvent.getClickCount() == 2 && table.getSelectedRow() != -1) {
+			            String gameId = tableMyGame.getValueAt(row, 0 /*Game id column*/).toString();
+			            Map<Integer, Integer> playersGradeDic = DataBase.GetGradePlayerByGame(Integer.valueOf(gameId));
+						addPlayerToGameFrm = new AddPlayerIToGame(playersGradeDic);
+						addPlayerToGameFrm.setVisible(true);
+			            
+			            
+			        }
+			    }
+			});
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 		scrollPane.setViewportView(tableMyGame);
 		
+		btnRemoveGame = new JButton("Remove Game");
+		btnRemoveGame.setBounds(137, 338, 133, 21);
+		panelMyGame.add(btnRemoveGame);
+		
 		btnExit = new JButton("Exit");
-		btnExit.setBounds(73, 474, 163, 49);
+		btnExit.setBounds(313, 478, 163, 49);
 		JFrameTeamGame.add(btnExit);
-		
-		btnTeamSquad = new JButton("Team Squad");
-		btnTeamSquad.setBounds(361, 474, 154, 49);
-		JFrameTeamGame.add(btnTeamSquad);
-		
-		btnTraningSet = new JButton("Traning Set");
-		btnTraningSet.setBounds(614, 474, 146, 49);
-		JFrameTeamGame.add(btnTraningSet);
 	}
 
 
@@ -220,7 +238,41 @@ public class Games extends JFrame {
 			String btnClick = e.getActionCommand();
 			
 			if(btnClick == "Exit")
-				System.exit(1);
+				dispose();
+			
+			if(btnClick == "Remove Game")
+			{
+				int row = tableMyGame.getSelectedRow();
+				if (row == -1)
+				{
+					JOptionPane.showMessageDialog(null,"Please select game ");
+					return;
+				}
+				int msgResult  = JOptionPane.showConfirmDialog(null, "Are you sure want to remove this game?");
+		        if (msgResult != 0 ) /* 0 = yes 1= no 2 = cancel*/
+		        	return;
+		        int gameID = Integer.valueOf(tableMyGame.getValueAt(row, 0 /*Index of GameID*/).toString());
+		        boolean isSuccess = DataBase.RemoveGame(gameID);
+		        if(isSuccess)
+		        {
+					JOptionPane.showMessageDialog(null,"Success Game ID num" + gameID + " removed! ");
+					try {
+						tableMyGame.setModel(DataBase.buildTableModel(DataBase.getGame()));
+					} catch (SQLException e1) {
+						// TODO Auto-generated catch block
+						e1.printStackTrace();
+					}
+		        }
+		        else
+					JOptionPane.showMessageDialog(null,"something wrong ! :( ");
+
+
+				
+				return;
+			}
+			
+			
+			
 			
 			if(btnClick == "Subbmit")
 			{
@@ -231,7 +283,7 @@ public class Games extends JFrame {
 				int myScore = Integer.valueOf(textMy_Score.getText());
 				int OpponentScore = Integer.valueOf(textOpponent_Scroe.getText());
 				int fixure = Integer.valueOf(spFixure.getValue().toString());
-				
+				int numPlayerTakePart = Integer.valueOf(spRangePlayers.getValue().toString());
 				
 				
 				if(teamOpponent.isEmpty())
@@ -255,12 +307,12 @@ public class Games extends JFrame {
 					return;
 				}
 				//// Since now can you sure that props are currect
-					addPlayerInGame(Integer.valueOf(spRangePlayers.getValue().toString()));
+					addPlayerInGame(numPlayerTakePart,fixure);
 					if(DataBase.AddGame(new Game(fixure,teamOpponent,myScore,OpponentScore,Date.valueOf(date))))
 					{
 						System.out.println("Success");
 						tableMyGame.setModel(DataBase.buildTableModel(DataBase.getGame()));
-						spFixure.setModel(new SpinnerNumberModel(DataBase.getGames().size()+1,null,null,1));
+						spFixure.setModel(new SpinnerNumberModel(DataBase.getNextGameNum(),null,null,1));
 						ClearAllTextfield();
 
 					}
@@ -272,6 +324,7 @@ public class Games extends JFrame {
 				}
 			}
 		}
+
 		private void ClearAllTextfield() {
 
 			textDate.setText(null);
@@ -282,6 +335,8 @@ public class Games extends JFrame {
 		}
 		private boolean isValidDate(String date)
 		{
+			if(date.isEmpty())
+				return false;
 			try {
 	            DateFormat df = new SimpleDateFormat(DATE_FORMAT);
 	            df.setLenient(false);
@@ -292,7 +347,7 @@ public class Games extends JFrame {
 				return false;
 			}
 		}
-		private void addPlayerInGame(int numOfPlayer) {
+		private void addPlayerInGame(int numOfPlayer,int fixure) {
 			if(numOfPlayer<=0)
 			{
 				JOptionPane.showMessageDialog(null,"Please set Number of player whose take part in Game");
@@ -300,9 +355,9 @@ public class Games extends JFrame {
 			}
 //			if(addPlayerToGameFrm != null && addPlayerToGameFrm.isVisible())
 //			{
-				addPlayerToGameFrm = new AddPlayerIToGame(numOfPlayer);
+				addPlayerToGameFrm = new AddPlayerIToGame(numOfPlayer, fixure);
 				addPlayerToGameFrm.setVisible(true);
-			
+			//}
 		}
 		
 	}

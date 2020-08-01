@@ -5,29 +5,57 @@ import java.io.IOException;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
+import javax.swing.JOptionPane;
 
 public class ClickMouseListener implements java.awt.event.MouseListener {
 
 	private String IconSelected;
 	private TraningSet FrameToDraw;
+	private Point firstArrowPoint;
 	
 	
 	public ClickMouseListener(TraningSet frame)
 	{
 		super();
 		this.FrameToDraw = frame;
+		this.IconSelected = "";
 	}
 	
 	@Override
 	public void mouseClicked(MouseEvent e) {
 		
+		Point clickedPoint = new Point(e.getX(),e.getY());
+		/* Is click on board */
 		if(e.getSource() instanceof JLabel)
 		{
 			if (!IconSelected.isEmpty())
 			{
 				try {
-					FrameToDraw.DrawIconToBoard(IconSelected, new Point(e.getX(),e.getY()));
-					IconSelected = null;
+					if(IconSelected == "Arrow" || IconSelected == "Arrow2")
+					{
+						// If not the first click for arrow
+						if(firstArrowPoint != null){
+							// Draw Arrow
+							FrameToDraw.DrawArrowToBoard(IconSelected == "Arrow2", firstArrowPoint, clickedPoint);
+							
+							// Init all drawing arrow related props
+							firstArrowPoint = null;
+							IconSelected = "";
+						}
+						else {
+							// Set first Point for Arrow
+							firstArrowPoint = clickedPoint;
+						}
+					}
+					else
+					{
+						// Draw icon on board
+						FrameToDraw.DrawIconToBoard(IconSelected, clickedPoint);
+						
+						// Set drawing icon selected prop
+						IconSelected = "";
+					}
+					
 				} catch (IOException e1) {
 					// TODO Auto-generated catch block
 					e1.printStackTrace();
@@ -38,10 +66,25 @@ public class ClickMouseListener implements java.awt.event.MouseListener {
 		
 		String btnClick = ((JButton)e.getSource()).getText();
 		
-		if(btnClick == "IconO" || btnClick == "IconX" || btnClick == "IconCone" || btnClick == "btnIconText" )
-			IconSelected = btnClick;
-			
-		System.out.println(((JButton)e.getSource()).getText());
+		if(btnClick == "Clear Board")
+		{
+			FrameToDraw.ClearBoard();
+			return;
+		}
+		if(btnClick == "Save")
+		{
+			FrameToDraw.SaveBoardToImg();
+			return;
+		}
+		
+		//if(btnClick == "IconO" || btnClick == "IconX" || btnClick == "IconCone" || btnClick == "btnIconText")
+		IconSelected = btnClick;
+		
+		if(IconSelected == "Arrow" || IconSelected == "Arrow2")
+			JOptionPane.showMessageDialog(null, "Click on two point in board");
+		
+		
+
 
 	}
 
